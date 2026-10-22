@@ -17,3 +17,9 @@ data/rejected/*
 .idea/
 .vscode/
 .coverage
+
+# LaTeX build artefacts
+docs/*.aux
+docs/*.log
+docs/*.out
+docs/*.toc

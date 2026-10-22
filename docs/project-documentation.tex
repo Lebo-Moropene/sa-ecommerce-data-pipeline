@@ -1,0 +1,259 @@
+% =====================================================================
+%  SA E-Commerce Data Pipeline -- Project Documentation
+%  Build:  lualatex project-documentation.tex   (run twice for TOC)
+% =====================================================================
+\documentclass[10pt,a4paper]{article}
+
+% ---------- Fonts ----------
+\usepackage{lmodern}
+\usepackage{fontspec}
+\setmainfont{Lato}[
+  Ligatures=TeX,
+  BoldFont={Lato Bold},
+  ItalicFont={Lato Light Italic},
+  BoldItalicFont={Lato Bold Italic}
+]
+\setsansfont{Lato}
+\setmonofont{Fira Mono}[Scale=0.92, AutoFakeSlant=0.18]
+
+% ---------- Language ----------
+\usepackage[english]{babel}
+
+% ---------- Page geometry ----------
+\usepackage[
+  top=25mm,
+  bottom=24mm,
+  left=22mm,
+  right=22mm,
+  headheight=19pt,
+  headsep=8mm,
+  footskip=12mm
+]{geometry}
+
+% ---------- Core packages ----------
+\usepackage{microtype}
+\usepackage{xcolor}
+\usepackage{graphicx}
+\usepackage{titlesec}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{array}
+\usepackage{enumitem}
+\usepackage{listings}
+\usepackage{tikz}
+\usepackage{fancyhdr}
+\usepackage[most]{tcolorbox}
+\usepackage[hidelinks]{hyperref}
+
+\usetikzlibrary{arrows.meta,positioning,calc,shapes.geometric,fit,backgrounds}
+
+% =====================================================================
+%  Design tokens
+% =====================================================================
+\definecolor{brand}{HTML}{0B3D2E}
+\definecolor{brandmid}{HTML}{1B7F5F}
+\definecolor{brandsoft}{HTML}{E8F1ED}
+\definecolor{accent}{HTML}{B8862B}
+\definecolor{accentsoft}{HTML}{FBF3E2}
+\definecolor{ink}{HTML}{22282B}
+\definecolor{muted}{HTML}{6E777D}
+\definecolor{rule}{HTML}{D8DEDB}
+\definecolor{codebg}{HTML}{F5F7F6}
+\definecolor{codeframe}{HTML}{E2E8E5}
+\definecolor{warn}{HTML}{9C3B1E}
+\definecolor{warnsoft}{HTML}{FBEDE9}
+
+% =====================================================================
+%  Typography
+% =====================================================================
+\color{ink}
+\pagestyle{fancy}
+\fancyhf{}
+\renewcommand{\headrulewidth}{0.4pt}
+\renewcommand{\footrulewidth}{0pt}
+\renewcommand{\headrule}{\hbox to\headwidth{\color{rule}\leaders\hrule height \headrulewidth\hfill}}
+\fancyhead[L]{\footnotesize\color{muted}\MakeUppercase{South African E-Commerce Data Pipeline}}
+\fancyhead[R]{\footnotesize\color{muted}\MakeUppercase{\leftmark}}
+\fancyfoot[C]{\footnotesize\color{muted}\thepage}
+\renewcommand{\sectionmark}[1]{\markboth{#1}{}}
+
+\titleformat{\section}
+  {\normalfont\Large\bfseries\color{brand}}{\thesection}{0.7em}{}
+  [\vspace{2pt}\titlerule]
+\titlespacing*{\section}{0pt}{18pt}{10pt}
+
+\titleformat{\subsection}
+  {\normalfont\large\bfseries\color{brandmid}}{\thesubsection}{0.6em}{}
+\titlespacing*{\subsection}{0pt}{14pt}{6pt}
+
+\titleformat{\subsubsection}
+  {\normalfont\normalsize\bfseries\color{ink}}{\thesubsubsection}{0.6em}{}
+\titlespacing*{\subsubsection}{0pt}{11pt}{4pt}
+
+\setlist[itemize]{leftmargin=1.35em,itemsep=3pt,topsep=5pt,parsep=0pt}
+\setlist[enumerate]{leftmargin=1.6em,itemsep=3pt,topsep=5pt,parsep=0pt}
+
+% =====================================================================
+%  Helpers
+% =====================================================================
+\newcommand{\cpath}[1]{\nolinkurl{#1}}
+\newcommand{\chip}[1]{\textcolor{brand}{\texttt{#1}}}
+\newcommand{\pill}[1]{%
+  \tikz[baseline=(t.base)]\node[fill=brandsoft,text=brand,rounded corners=1.2pt,
+  inner xsep=4pt,inner ysep=1.4pt,font=\footnotesize\bfseries] (t) {#1};}
+
+% =====================================================================
+%  Callout boxes
+% =====================================================================
+\newtcolorbox{keybox}[1][]{%
+  enhanced, breakable,
+  colback=brandsoft, colframe=brand,
+  boxrule=0pt, leftrule=3pt,
+  arc=1.4mm, left=4mm, right=3mm, top=3mm, bottom=3mm,
+  fonttitle=\bfseries\small, title={#1},
+  before skip=10pt, after skip=10pt}
+
+\newtcolorbox{warnbox}[1][]{%
+  enhanced, breakable,
+  colback=warnsoft, colframe=warn,
+  boxrule=0pt, leftrule=3pt,
+  arc=1.4mm, left=4mm, right=3mm, top=3mm, bottom=3mm,
+  fonttitle=\bfseries\small, title={#1},
+  before skip=10pt, after skip=10pt}
+
+\newtcolorbox{plainbox}[1][]{%
+  enhanced, breakable,
+  colback=white, colframe=rule,
+  boxrule=0.6pt, arc=1.4mm, left=4mm, right=4mm, top=3mm, bottom=3mm,
+  before skip=10pt, after skip=10pt}
+
+% =====================================================================
+%  Code listings
+% =====================================================================
+\lstdefinestyle{py}{
+  language=Python,
+  basicstyle=\ttfamily\footnotesize,
+  keywordstyle=\color{brand}\bfseries,
+  stringstyle=\color{accent},
+  commentstyle=\color{muted}\itshape,
+  emph={fetch_products,clean_products,load_products,run_report,main},
+  emphstyle=\color{brandmid}\bfseries,
+  numbers=none, frame=none, showstringspaces=false,
+  breaklines=true, breakatwhitespace=false,
+  tabsize=4, upquote=true, escapeinside={(*@}{@*)}
+}
+\lstdefinestyle{sh}{
+  language=bash,
+  basicstyle=\ttfamily\footnotesize,
+  keywordstyle=\color{brand}\bfseries,
+  commentstyle=\color{muted}\itshape,
+  numbers=none, frame=none, showstringspaces=false,
+  breaklines=true, tabsize=4, upquote=true, morekeywords={python,python3,pip,git,sqlite3,source,pytest}
+}
+\lstdefinestyle{txt}{
+  basicstyle=\ttfamily\footnotesize,
+  numbers=none, frame=none, showstringspaces=false,
+  breaklines=true, tabsize=4, upquote=true,
+  keywordstyle=\color{brandmid}, commentstyle=\color{muted}\itshape
+}
+
+\newtcolorbox{codebox}[1][]{%
+  enhanced, breakable,
+  colback=codebg, colframe=codeframe,
+  boxrule=0.6pt, arc=1.2mm,
+  left=3mm, right=3mm, top=2.4mm, bottom=2.4mm,
+  before skip=9pt, after skip=9pt,
+  before upper={\setlength{\parindent}{0pt}},
+  #1}
+
+% =====================================================================
+%  Tables
+% =====================================================================
+\renewcommand{\arraystretch}{1.25}
+\newcolumntype{Y}{>{\raggedright\arraybackslash}X}
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
+\newcommand{\thead}[1]{\textbf{\textcolor{brand}{#1}}}
+
+% =====================================================================
+%  Hyperlinks
+% =====================================================================
+\hypersetup{
+  colorlinks=true,
+  linkcolor=brand,
+  urlcolor=brandmid,
+  pdftitle={SA E-Commerce Data Pipeline -- Project Documentation},
+  pdfsubject={Python ETL pipeline for retail inventory analytics},
+  pdfauthor={Lebo Moropene},
+  pdfkeywords={data engineering, ETL, Python, pandas, SQLite, SQL, analytics, inventory}
+}
+
+% =====================================================================
+%  Title page
+% =====================================================================
+\begin{document}
+
+\begin{titlepage}
+\thispagestyle{empty}
+\begin{tikzpicture}[remember picture,overlay]
+  \fill[brand] (current page.north west) rectangle ([yshift=-10.6cm]current page.north east);
+  \fill[accent] ([yshift=-10.6cm]current page.north west) rectangle ([yshift=-10.25cm]current page.north east);
+  \fill[brandmid,opacity=0.16]
+    ([xshift=-3.2cm,yshift=-4.0cm]current page.north east)
+    circle[radius=5.6cm];
+  \fill[brandmid,opacity=0.10]
+    ([xshift=-1.0cm,yshift=-7.4cm]current page.north east)
+    circle[radius=3.4cm];
+\end{tikzpicture}
+
+\vspace*{4.6cm}
+
+{\color{white}\fontsize{13}{16}\selectfont\bfseries\MakeUppercase{Project Documentation}\par}
+\vspace{0.55cm}
+{\color{white}\fontsize{33}{37}\selectfont\bfseries
+South African\\[0.12cm]
+E-Commerce Data Pipeline\par}
+\vspace{0.7cm}
+{\color{brandsoft}\fontsize{13.5}{19}\selectfont
+A production-shaped Extract $\rightarrow$ Validate $\rightarrow$ Transform $\rightarrow$
+Load $\rightarrow$ Analyse pipeline for retail inventory analytics.\par}
+
+\vspace{6.0cm}
+
+\noindent{\color{brand}\rule{\textwidth}{0.8pt}\par}
+\vspace{0.5cm}
+
+\noindent
+\begin{tabularx}{\textwidth}{@{}L{3.1cm}Y@{}}
+  \textcolor{muted}{Repository} &
+  \cpath{git@github.com:Lebo-Moropene/sa-ecommerce-data-pipeline.git} \\[3pt]
+  \textcolor{muted}{Stack} &
+  Python 3.10+, \cpath{requests}, \cpath{pandas}, SQLite, SQL, \cpath{pytest} \\[3pt]
+  \textcolor{muted}{Source} &
+  \cpath{dummyjson.com/products} (public sample REST API) \\[3pt]
+  \textcolor{muted}{Status} &
+  Complete --- all four pipeline stages implemented, tested and verified end to end. \\
+\end{tabularx}
+
+\vfill
+
+{\color{muted}\footnotesize
+This document describes what the pipeline is, the problem it solves, how it is
+architected, and how to install, run, extend and troubleshoot it.
+It was generated from the repository source at commit
+\texttt{82a4721}.}
+
+\end{titlepage}
+
+% =====================================================================
+%  Table of contents
+% =====================================================================
+{\hypersetup{linkcolor=brand}%
+\tableofcontents}
+
+\newpage
+
+% =====================================================================
+\include{content}
+% =====================================================================
+
+\end{document}
