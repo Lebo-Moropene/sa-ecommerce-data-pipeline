@@ -24,9 +24,9 @@ def database():
         VALUES (?, ?, ?, ?, ?)
         """,
         [
-            (1, "Product A", "beauty", 10.0, 5),
-            (2, "Product B", "beauty", 20.0, 15),
-            (3, "Product C", "fragrances", 60.0, 2),
+            (1, "Product A", "laptops", 10.0, 5),
+            (2, "Product B", "laptops", 20.0, 15),
+            (3, "Product C", "mobile-accessories", 60.0, 2),
         ],
     )
 
@@ -43,8 +43,8 @@ def test_products_are_counted_by_category(database):
     """).fetchall()
 
     assert results == [
-        ("beauty", 2),
-        ("fragrances", 1),
+        ("laptops", 2),
+        ("mobile-accessories", 1),
     ]
 
 
@@ -63,7 +63,7 @@ def test_average_price_is_calculated_correctly(database):
     result = database.execute("""
         SELECT AVG(price)
         FROM products
-        WHERE category = 'beauty'
+        WHERE category = 'laptops'
     """).fetchone()[0]
 
     assert result == pytest.approx(15.0)

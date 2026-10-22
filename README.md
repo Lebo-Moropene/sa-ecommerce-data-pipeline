@@ -2,7 +2,9 @@
 
 A Python data engineering pipeline that extracts product data from a public
 REST API, validates and cleans it, loads it into a SQLite data store, and runs
-inventory analytics on the result.
+inventory analytics on the result. The source catalogue is the
+computer-electronics slice of the API: laptops, tablets and mobile
+accessories.
 
 ## Project Overview
 
@@ -32,7 +34,7 @@ South African retail scenario.
 ## Pipeline Architecture
 
 ```
-dummyjson.com/products API
+dummyjson.com/products/category/* API
         |
         v
 [1] Extract   src/ingestion/fetch_products.py    -> data/raw/products_api.json
@@ -97,15 +99,20 @@ Expected output (abridged):
 
 ```
 STEP 1: Fetching product data
-HTTP status: 200
-Products retrieved: 10
+HTTP status: 200 (laptops)
+Products retrieved from laptops: 5
+HTTP status: 200 (tablets)
+Products retrieved from tablets: 3
+HTTP status: 200 (mobile-accessories)
+Products retrieved from mobile-accessories: 14
+Products retrieved: 22
 
 STEP 2: Cleaning product data
-Clean products: 10
+Clean products: 22
 Rejected products: 0
 
 STEP 3: Loading products into SQLite
-Products loaded into database: 10
+Products loaded into database: 22
 
 STEP 4: Running analytics
 === 1. PRODUCTS WITH LOWEST STOCK ===
@@ -145,7 +152,7 @@ sqlite3 data/ecommerce.db "SELECT category, AVG(price) FROM products GROUP BY ca
 
 | Source | Type | Notes |
 | --- | --- | --- |
-| [dummyjson.com/products](https://dummyjson.com/products) | Public sample REST API | Fetched with `limit=10`, 5s connect / 15s read timeout |
+| [dummyjson.com/products/category/laptops](https://dummyjson.com/products/category/laptops) | Public sample REST API | The `laptops`, `tablets` and `mobile-accessories` categories (22 products), 5s connect / 15s read timeout |
 
 Raw, processed and rejected files are written under `data/` and excluded from
 version control; only `.gitkeep` placeholders are committed.

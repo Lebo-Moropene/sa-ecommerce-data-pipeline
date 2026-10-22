@@ -69,8 +69,8 @@ places.
 
 \textbf{Stockouts.} A product that is out of stock does not generate a slow
 sale --- it generates no sale at all, and it quietly pushes the customer to a
-competitor. The catalogue in this pipeline contains a fragrance with only
-four units left. Nothing about that record looks urgent in a raw JSON feed.
+competitor. The catalogue in this pipeline contains a wireless charger with
+a single unit left. Nothing about that record looks urgent in a raw JSON feed.
 It only becomes urgent once it is ranked, aggregated and presented next to
 everything else that is low.
 
@@ -117,7 +117,7 @@ Averages price per category and orders by price point \\
 \addlinespace
 API records are incomplete or invalid &
 Reports quietly aggregate nonsense &
-Twelve validation rules reject bad rows to an auditable CSV \\
+Nine validation rules reject bad rows to an auditable CSV \\
 \addlinespace
 Re-running the pipeline duplicates rows &
 Counts inflate on every run &
@@ -163,8 +163,8 @@ the ones before it.
   flow/.style={-{Latex[length=2.6mm,width=1.9mm]}, brand!70, line width=0.9pt},
   side/.style={-{Latex[length=2mm,width=1.5mm]}, accent!80, line width=0.6pt, dashed}
 ]
-\node[src] (source) {\texttt{dummyjson.com/products?limit=10}\\[1pt]
-  {\footnotesize\normalfont Public sample REST API --- 10 of 194 catalogue items}};
+\node[src] (source) {\texttt{dummyjson.com/products/category/*}\\[1pt]
+  {\footnotesize\normalfont Public sample REST API --- 22 computer-electronics items}};
 
 \node[stage, below=of source] (s1) {
   \textbf{1. Extract}\\[-2pt]
@@ -210,24 +210,37 @@ the ones before it.
 
 \subsection{Stage 1 --- Extract}
 
-\cpath{src/ingestion/fetch_products.py} issues a single HTTP GET against the
-catalogue endpoint with a limit of ten records.
+\cpath{src/ingestion/fetch_products.py} issues one HTTP GET per category
+against the catalogue endpoint, then merges the responses into a single
+payload.
 
 \begin{codebox}
 \noindent
 \begin{lstlisting}[style=py]
-API_URL = "https://dummyjson.com/products?limit=10"
+API_BASE_URL = "https://dummyjson.com/products/category"
+API_CATEGORIES = ["laptops", "tablets", "mobile-accessories"]
 
-response = requests.get(API_URL, timeout=(5, 15))
-response.raise_for_status()
-payload = response.json()
+for category in API_CATEGORIES:
+    url = f"{API_BASE_URL}/{category}"
+
+    response = requests.get(url, timeout=(5, 15))
+    response.raise_for_status()
+    payload = response.json()
+
+    category_products = payload.get("products")
+    if not isinstance(category_products, list):
+        raise SystemExit("Unexpected API response: products list is missing.")
+
+    products.extend(category_products)
+    total += payload.get("total", len(category_products))
 \end{lstlisting}
 \end{codebox}
 
-The response is written verbatim to \cpath{data/raw/products_api.json}
-before any interpretation happens. Keeping the untouched payload on disk
-means the extraction stage is reproducible: if a later stage produces a
-surprising result, the exact bytes that produced it are still there.
+The three responses are merged, untouched, into a single payload and written
+to \cpath{data/raw/products_api.json} before any interpretation happens.
+Keeping the untransformed payload on disk means the extraction stage is
+reproducible: if a later stage produces a surprising result, the exact rows
+that produced it are still there.
 
 The function is defensive about everything it does not control. Network
 failures, HTTP error statuses and malformed JSON are all caught and
@@ -309,7 +322,8 @@ with sqlite3.connect(DATABASE_PATH) as connection:
 
 \cpath{if_exists="replace"} is what makes the pipeline idempotent. Every run
 rebuilds the \cpath{products} table from the current clean file, so running
-the pipeline ten times gives the same ten rows --- not a hundred. The stage
+the pipeline ten times gives the same twenty-two rows --- not two hundred and
+twenty-two. The stage
 also refuses to invent data: if the clean CSV does not exist it raises
 \cpath{FileNotFoundError} with a message telling you to run the cleaning
 step first, rather than quietly loading an empty table.
@@ -369,7 +383,7 @@ Ingestion & \cpath{requests} & A mature HTTP client with first-class timeout
   support and clear exception types, which is what makes the error handling
   in Stage 1 straightforward. \\
 \addlinespace
-Transformation & \cpath{pandas} & Vectorised column operations turn eleven
+Transformation & \cpath{pandas} & Vectorised column operations turn nine
   validation rules into a single boolean mask, and the DataFrame is a
   natural fit for reading and writing CSV. \\
 \addlinespace
@@ -544,49 +558,58 @@ captured from a live run against the public API.
 \noindent
 \begin{lstlisting}[style=txt]
 STEP 1: Fetching product data
-HTTP status: 200
-Products retrieved: 10
-Total products reported by API: 194
+HTTP status: 200 (laptops)
+Products retrieved from laptops: 5
+HTTP status: 200 (tablets)
+Products retrieved from tablets: 3
+HTTP status: 200 (mobile-accessories)
+Products retrieved from mobile-accessories: 14
+Products retrieved: 22
+Total products reported by API: 22
 Raw data saved to: .../data/raw/products_api.json
 
 STEP 2: Cleaning product data
-Products received: 10
-Clean products: 10
+Products received: 22
+Clean products: 22
 Rejected products: 0
 Clean data saved to: .../data/processed/clean_products.csv
 Rejected data saved to: .../data/rejected/rejected_products.csv
 
 STEP 3: Loading products into SQLite
-Products loaded into database: 10
+Products loaded into database: 22
 Database saved to: .../data/ecommerce.db
 
 STEP 4: Running analytics
 
 === 1. PRODUCTS WITH LOWEST STOCK ===
-Dolce Shine Eau de | fragrances | Stock: 4
-Calvin Klein CK One | fragrances | Stock: 29
-Eyeshadow Palette with Mirror | beauty | Stock: 34
-Chanel Coco Noir Eau De | fragrances | Stock: 58
-Red Nail Polish | beauty | Stock: 79
+Apple Airpower Wireless Charger | mobile-accessories | Stock: 1
+Apple MagSafe Battery Pack | mobile-accessories | Stock: 1
+Selfie Stick Monopod | mobile-accessories | Stock: 11
+TV Studio Camera Pedestal | mobile-accessories | Stock: 15
+Apple MacBook Pro 14 Inch Space Grey | laptops | Stock: 24
 
 === 2. PRODUCTS PER CATEGORY ===
-beauty: 5 products
-fragrances: 5 products
+mobile-accessories: 14 products
+laptops: 5 products
+tablets: 3 products
 
 === 3. AVERAGE PRICE PER CATEGORY ===
-fragrances: 83.99
-beauty: 13.39
+laptops: 1559.99
+tablets: 483.32
+mobile-accessories: 146.99
 
 Pipeline completed successfully.
 \end{lstlisting}
 \end{codebox}
 
 Two numbers in that output are worth pausing on.
-\cpath{Products retrieved: 10} is what the API returned, limited by the
-request. \cpath{Total products reported by API: 194} is the size of the
-full catalogue the API knows about. The pipeline deliberately fetches a
-small slice --- the point of the project is the architecture, not the volume
-of data, and a ten-row payload keeps every stage and every report readable.
+\cpath{Products retrieved: 22} is how many rows came back across the three
+category requests. \cpath{Total products reported by API: 22} is the size
+of the computer-electronics slice the API knows about --- the catalogue as a
+whole holds 194 products, but only these three categories are in scope. The
+pipeline deliberately fetches one narrow slice: the point of the project is
+the architecture, not the volume of data, and a twenty-two-row payload keeps
+every stage and every report readable.
 
 \subsection{Run a single stage}
 
@@ -609,7 +632,7 @@ python -m src.analytics.product_report  # Stage 4 -> console report
 \begin{codebox}
 \noindent
 \begin{lstlisting}[style=sh]
-# the ten rows that survived validation
+# the 22 rows that survived validation
 cat data/processed/clean_products.csv
 
 # anything that failed a rule (empty when the source is clean)
@@ -625,16 +648,28 @@ sqlite3 data/ecommerce.db "SELECT COUNT(*) FROM products;"
 \noindent
 \begin{lstlisting}[style=txt]
 id,title,category,brand,price,stock,rating
-1,Essence Mascara Lash Princess,beauty,Essence,9.99,99,2.56
-2,Eyeshadow Palette with Mirror,beauty,Glamour Beauty,19.99,34,2.86
-3,Powder Canister,beauty,Velvet Touch,14.99,89,4.64
-4,Red Lipstick,beauty,Chic Cosmetics,12.99,91,4.36
-5,Red Nail Polish,beauty,Nail Couture,8.99,79,4.32
-6,Calvin Klein CK One,fragrances,Calvin Klein,49.99,29,4.37
-7,Chanel Coco Noir Eau De,fragrances,Chanel,129.99,58,4.26
-8,Dior J'adore,fragrances,Dior,89.99,98,3.8
-9,Dolce Shine Eau de,fragrances,Dolce & Gabbana,69.99,4,3.96
-10,Gucci Bloom Eau de,fragrances,Gucci,79.99,91,2.74
+78,Apple MacBook Pro 14 Inch Space Grey,laptops,Apple,1999.99,24,3.65
+79,Asus Zenbook Pro Dual Screen Laptop,laptops,Asus,1799.99,45,3.95
+80,Huawei Matebook X Pro,laptops,Huawei,1399.99,75,4.98
+81,Lenovo Yoga 920,laptops,Lenovo,1099.99,40,2.86
+82,New DELL XPS 13 9300 Laptop,laptops,Dell,1499.99,74,2.67
+159,iPad Mini 2021 Starlight,tablets,Apple,499.99,47,3.18
+160,Samsung Galaxy Tab S8 Plus Grey,tablets,Samsung,599.99,62,4.68
+161,Samsung Galaxy Tab White,tablets,Samsung,349.99,92,3.72
+99,Amazon Echo Plus,mobile-accessories,Amazon,99.99,61,4.99
+100,Apple Airpods,mobile-accessories,Apple,129.99,67,4.15
+101,Apple AirPods Max Silver,mobile-accessories,Apple,549.99,59,3.47
+102,Apple Airpower Wireless Charger,mobile-accessories,Apple,79.99,1,3.68
+103,Apple HomePod Mini Cosmic Grey,mobile-accessories,Apple,99.99,27,4.62
+104,Apple iPhone Charger,mobile-accessories,Apple,19.99,31,4.15
+105,Apple MagSafe Battery Pack,mobile-accessories,Apple,99.99,1,3.62
+106,Apple Watch Series 4 Gold,mobile-accessories,Apple,349.99,33,2.74
+107,Beats Flex Wireless Earphones,mobile-accessories,Beats,49.99,50,4.24
+108,iPhone 12 Silicone Case with MagSafe Plum,mobile-accessories,Apple,29.99,69,3.62
+109,Monopod,mobile-accessories,TechGear,19.99,48,4.43
+110,Selfie Lamp with iPhone,mobile-accessories,GadgetMaster,14.99,58,3.55
+111,Selfie Stick Monopod,mobile-accessories,SnapTech,12.99,11,3.88
+112,TV Studio Camera Pedestal,mobile-accessories,ProVision,499.99,15,2.78
 \end{lstlisting}
 \end{codebox}
 
@@ -671,8 +706,9 @@ sqlite3 data/ecommerce.db ".schema products"
 \begin{codebox}
 \noindent
 \begin{lstlisting}[style=txt]
-fragrances|83.9925
-beauty|13.39
+laptops|1559.99
+mobile-accessories|146.99
+tablets|483.323333333333
 \end{lstlisting}
 \end{codebox}
 
@@ -687,7 +723,7 @@ beauty|13.39
 \thead{Artefact} & \thead{Produced by} & \thead{Contents} \\
 \midrule
 \cpath{data/raw/products_api.json} & Stage 1 &
-The verbatim API payload, including metadata such as the catalogue total. \\
+The merged API payload, including metadata such as the catalogue total. \\
 \addlinespace
 \cpath{data/processed/clean_products.csv} & Stage 2 &
 Every record that passed all validation rules, in the canonical column order. \\
@@ -869,11 +905,11 @@ because it identifies both the product and the quantity remaining.
 \noindent
 \begin{lstlisting}[style=txt]
 === 1. PRODUCTS WITH LOWEST STOCK ===
-Dolce Shine Eau de | fragrances | Stock: 4
-Calvin Klein CK One | fragrances | Stock: 29
-Eyeshadow Palette with Mirror | beauty | Stock: 34
-Chanel Coco Noir Eau De | fragrances | Stock: 58
-Red Nail Polish | beauty | Stock: 79
+Apple Airpower Wireless Charger | mobile-accessories | Stock: 1
+Apple MagSafe Battery Pack | mobile-accessories | Stock: 1
+Selfie Stick Monopod | mobile-accessories | Stock: 11
+TV Studio Camera Pedestal | mobile-accessories | Stock: 15
+Apple MacBook Pro 14 Inch Space Grey | laptops | Stock: 24
 \end{lstlisting}
 \end{codebox}
 
@@ -898,8 +934,9 @@ could differ between runs.
 \noindent
 \begin{lstlisting}[style=txt]
 === 2. PRODUCTS PER CATEGORY ===
-beauty: 5 products
-fragrances: 5 products
+mobile-accessories: 14 products
+laptops: 5 products
+tablets: 3 products
 \end{lstlisting}
 \end{codebox}
 
@@ -924,8 +961,9 @@ output regardless of the underlying value.
 \noindent
 \begin{lstlisting}[style=txt]
 === 3. AVERAGE PRICE PER CATEGORY ===
-fragrances: 83.99
-beauty: 13.39
+laptops: 1559.99
+tablets: 483.32
+mobile-accessories: 146.99
 \end{lstlisting}
 \end{codebox}
 
@@ -968,7 +1006,7 @@ Ordering by stock ascending and limiting to one returns the lowest-stock
 product. \\
 \addlinespace
 \cpath{test_average_price_is_calculated_correctly} &
-The average price for the \cpath{beauty} category equals 15.0, using
+The average price for the \cpath{laptops} category equals 15.0, using
 \cpath{pytest.approx} for floating-point comparison. \\
 \end{tabularx}
 
@@ -1000,9 +1038,9 @@ def database():
         VALUES (?, ?, ?, ?, ?)
         """,
         [
-            (1, "Product A", "beauty", 10.0, 5),
-            (2, "Product B", "beauty", 20.0, 15),
-            (3, "Product C", "fragrances", 60.0, 2),
+            (1, "Product A", "laptops", 10.0, 5),
+            (2, "Product B", "laptops", 20.0, 15),
+            (3, "Product C", "mobile-accessories", 60.0, 2),
         ],
     )
 
@@ -1085,9 +1123,9 @@ regenerable content and create merge conflicts on data that no human
 edits. \\
 \addlinespace
 No configuration file &
-The API URL and the record limit are module constants. For a pipeline with
-one source and one limit, a configuration layer would add a file to read
-and an argument to understand, in exchange for nothing. \\
+The API base URL and the list of categories are module constants. For a
+pipeline with one source and a fixed scope, a configuration layer would add
+a file to read and an argument to understand, in exchange for nothing. \\
 \end{tabularx}
 
 % =====================================================================
@@ -1146,10 +1184,11 @@ Update the SQL in both \cpath{tests/test_product_report.py} and
 \subsection{Current limitations}
 
 \begin{itemize}
-  \item \textbf{A ten-record slice.} The pipeline fetches
-        \cpath{limit=10} of a 194-record catalogue. This keeps the output
-        readable, but means the reports describe a sample rather than the
-        whole assortment.
+  \item \textbf{A narrow category slice.} The pipeline fetches the
+        \cpath{laptops}, \cpath{tablets} and \cpath{mobile-accessories}
+        categories --- 22 of the API's 194 products. This keeps the output
+        readable, but means the reports describe one corner of the
+        assortment rather than the whole thing.
   \item \textbf{No pagination.} Extending to the full catalogue requires
         either a larger limit or a loop over pages, which the ingestion
         stage does not implement.
@@ -1183,7 +1222,7 @@ Move the report SQL into shared constants &
 Tests that import the real queries, closing the regression gap \\
 \addlinespace
 Configurable limit and pagination &
-The full 194-record catalogue, with the limit set by argument or environment \\
+All 194 catalogue products, with the categories and limit set by argument or environment \\
 \addlinespace
 Export reports to CSV and Markdown &
 Output that other tools and people can consume directly \\
@@ -1239,9 +1278,9 @@ price points \\
 
 \begin{itemize}
   \item Project repository --- \cpath{git@github.com:Lebo-Moropene/sa-ecommerce-data-pipeline.git}
-  \item Data source --- \cpath{https://dummyjson.com/products} (public sample
-        REST API; fetched with \cpath{limit=10}, 5s connect and 15s read
-        timeouts)
+  \item Data source --- \cpath{https://dummyjson.com/products/category/laptops}
+        and two sibling category endpoints (public sample REST API; 5s connect
+        and 15s read timeouts)
   \item Python --- \cpath{https://docs.python.org/3/}
   \item \cpath{requests} --- \cpath{https://requests.readthedocs.io/}
   \item \cpath{pandas} --- \cpath{https://pandas.pydata.org/docs/}
