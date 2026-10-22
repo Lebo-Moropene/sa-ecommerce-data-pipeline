@@ -2,15 +2,21 @@
 
 A Python data engineering pipeline that extracts product data from a public
 REST API, validates and cleans it, loads it into a SQLite data store, and runs
-inventory analytics on the result. The source catalogue is the
-computer-electronics slice of the API: laptops, tablets and mobile
-accessories.
+inventory analytics on the result.
 
 ## Project Overview
 
 The project demonstrates a complete Extract -> Validate -> Transform -> Load ->
-Analyse (ETL) workflow for an e-commerce product catalogue, built around a
+Analyse (ETLA) workflow for an e-commerce product catalogue, built around a
 South African retail scenario.
+
+**Source data.** The pipeline reads the computer-electronics slice of the
+[DummyJSON](https://dummyjson.com/products) public REST API: the `laptops`,
+`tablets` and `mobile-accessories` categories, 22 products in total ---
+MacBook Pro 14", Zenbook Pro, XPS 13, iPad Mini, Galaxy Tab, AirPods, Apple
+Watch, Echo Plus and so on. Every record carries an id, title, category,
+brand, price, stock level and customer rating, which is exactly what the
+three reports need and nothing more.
 
 **Business problems addressed:**
 
@@ -18,6 +24,12 @@ South African retail scenario.
 - Understanding product mix across categories.
 - Comparing average price points between categories.
 - Supporting data-driven inventory decisions with reproducible SQL analytics.
+
+**What makes it more than an API call.** Data arriving from an API is
+untrusted: fields are missing, numbers arrive as strings, titles are blank and
+identifiers repeat. Every record is checked against an explicit rule set, and
+anything that fails is routed to a reject file rather than being silently
+dropped. Nothing unvalidated ever reaches the database.
 
 ## Technology Stack
 
