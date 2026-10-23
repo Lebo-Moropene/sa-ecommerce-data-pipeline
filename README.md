@@ -197,3 +197,5 @@ Clean records keep `id`, `title`, `category`, `brand`, `price`, `stock`,
 - [x] Automated tests (`pytest`)
 - [x] End-to-end pipeline orchestrator
 - [x] README and usage documentation
+
+##Verification code WTC-HHYY9N99
